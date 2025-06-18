@@ -91,7 +91,14 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true 
+
+-- ── Tab display width ───────────────────────────────────────────────
+-- Render each hard <Tab> as 2 columns and keep real tab characters
+vim.o.tabstop     = 2   -- visual width of a <Tab>
+vim.o.shiftwidth  = 2   -- >> and << shift by 2
+vim.o.softtabstop = 2   -- <Tab>/<BS> feel like 2
+vim.o.expandtab   = false
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -756,7 +763,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true }
+        local disable_filetypes = { c = true, cpp = true, typescript = true, typescriptreact = true, javascript = true, javascriptreact = true }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -854,11 +861,18 @@ require('lazy').setup({
       },
 
       sources = {
-        default = { 'lsp', 'path', 'snippets', 'lazydev' },
+        default = { "copilot", "lsp", "path", "snippets", "lazydev" },
         providers = {
           lazydev = { module = 'lazydev.integrations.blink', score_offset = 100 },
+          copilot = {
+            name         = "copilot",
+            module       = "blink-copilot",
+            async        = true,   -- Copilot is network-bound
+            score_offset = 120,
+          },
         },
       },
+      
 
       snippets = { preset = 'luasnip' },
 
@@ -964,6 +978,35 @@ require('lazy').setup({
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
   },
 
+  {
+    "pmizio/typescript-tools.nvim",
+    dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig" },
+    ft = { "typescript", "typescriptreact", "javascript", "javascriptreact" },
+    opts = {
+      -- Plugin-specific settings  (all come from the README) :contentReference[oaicite:0]{index=0}
+      settings = {
+        -- run a second, hidden tsserver just for diagnostics → keeps UI snappy
+        separate_diagnostic_server = true,
+        publish_diagnostic_on = "insert_leave",      -- or "change" if you want live
+        expose_as_code_action   = "all",             -- lets :TSToolsFixAll appear
+        formatter               = "prettier",        -- "prettier" | "tsserver" | "eslint_d"
+        tsserver_max_memory     = "auto",
+      },
+  
+      -- normal nvim-lsp on_attach still works
+      on_attach = function(client, bufnr)
+        -- typescript-tools provides its own formatter; turn others off
+        client.server_capabilities.documentFormattingProvider = true
+  
+        local map = function(lhs, rhs, desc)
+          vim.keymap.set("n", lhs, rhs, { buffer = bufnr, desc = "TS-Tools: " .. desc })
+        end
+        map("<leader>oi", "TSToolsOrganizeImports",  "Organize imports")
+        map("<leader>ru", "TSToolsRemoveUnused",     "Remove unused")
+        map("<leader>rf", "TSToolsRenameFile",       "Rename & update imports")
+      end,
+    },
+  },
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
@@ -977,14 +1020,14 @@ require('lazy').setup({
   -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   -- require 'kickstart.plugins.autopairs',
-  -- require 'kickstart.plugins.neo-tree',
+  require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
